@@ -115,6 +115,55 @@ def time_to_contact(
     return np.where(c <= 0.0, 0.0, t).astype(np.float32)
 
 
+def nearest_group(
+    relative_positions: np.ndarray,
+    velocities: np.ndarray,
+    labels: np.ndarray,
+    robot_velocity: np.ndarray,
+    max_range: float,
+) -> np.ndarray:
+    """[count, centroid x, y, centroid vx, vy relative to the robot, lateral spread] of the labelled group with the nearest centroid, zeros without one."""
+    out = np.zeros(6, dtype=np.float32)
+    best = math.inf
+    for label in np.unique(labels[labels >= 0]):
+        members = labels == label
+        if np.count_nonzero(members) < 2:
+            continue
+        centroid = relative_positions[members].mean(axis=0)
+        distance = float(np.hypot(*centroid))
+        if distance > max_range or distance >= best:
+            continue
+        best = distance
+        lateral = relative_positions[members, 1]
+        out[:] = [
+            np.count_nonzero(members),
+            *centroid,
+            *(velocities[members].mean(axis=0) - robot_velocity[:2]),
+            lateral.max() - lateral.min(),
+        ]
+    return out
+
+
+def proximity_clusters(
+    positions: np.ndarray, velocities: np.ndarray, distance: float, velocity_tolerance: float
+) -> np.ndarray:
+    """Cluster label per pedestrian, linking pairs closer than distance whose velocities differ by less than velocity_tolerance."""
+    n = len(positions)
+    parent = np.arange(n)
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = int(parent[i])
+        return i
+
+    close = np.hypot(*(positions[:, None, :] - positions[None, :, :]).transpose(2, 0, 1)) < distance
+    agree = np.hypot(*(velocities[:, None, :] - velocities[None, :, :]).transpose(2, 0, 1)) < velocity_tolerance
+    for i, j in zip(*np.nonzero(np.triu(close & agree, k=1)), strict=True):
+        parent[root(int(i))] = root(int(j))
+    return np.array([root(i) for i in range(n)], dtype=np.int64)
+
+
 def straight_line_subgoal(
     robot_xy: tuple[float, float],
     goal_xy: tuple[float, float],

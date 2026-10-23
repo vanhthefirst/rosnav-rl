@@ -27,12 +27,15 @@ from ..utils.pose import Pose2DType
 from ..utils.semantic import (
     get_relative_pos_to_robot,
     get_relative_vel_to_robot,
+    nearest_group,
+    proximity_clusters,
     straight_line_subgoal,
     time_to_contact,
 )
 from ..utils.types import (
     ArenaPedestrianDetections,
     ArenaPedestrianStates,
+    CrowdGroup,
     CrowdTimeToContact,
     DistanceAngleMetrics,
     GoalLocation,
@@ -1459,3 +1462,53 @@ class CrowdTimeToContactGenerator(Generator[CrowdTimeToContact]):
         out[2] = float(np.count_nonzero(ttc < self.imminent))
         out[3] = ttc[ahead].min() if ahead.any() else self.horizon
         return out
+
+
+class CrowdGroupGenerator(Generator[CrowdGroup]):
+    """Nearest pedestrian group from the simulator's group labels (Pedestrian.group_id)."""
+
+    requires = {
+        "arena_people_data": ArenaPedestrianDetections,
+        "pedestrian_relative_locations": PedestrianRelativeLocations,
+        "pedestrian_relative_velocities": PedestrianRelativeVelocities,
+        "robot_twist": RobotVelocity,
+    }
+
+    def __init__(self, name: str, max_range: float = 12.0, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.max_range = max_range
+
+    def _labels(
+        self, arena_people_data: arena_people_msgs.Pedestrians, positions: np.ndarray, velocities: np.ndarray
+    ) -> np.ndarray:
+        return np.array([p.group_id for p in arena_people_data.pedestrians], dtype=np.int64)
+
+    def _generate(
+        self,
+        arena_people_data: arena_people_msgs.Pedestrians,
+        pedestrian_relative_locations: PedestrianRelativeLocations,
+        pedestrian_relative_velocities: PedestrianRelativeVelocities,
+        robot_twist: RobotVelocity,
+        simulation_state_container: AgentParameters,
+        **kwargs: Any,
+    ) -> CrowdGroup:
+        if not arena_people_data or len(pedestrian_relative_locations) == 0 or len(pedestrian_relative_velocities) == 0:
+            return np.zeros(6, dtype=np.float32)
+        positions = np.asarray(pedestrian_relative_locations, dtype=np.float64).reshape(-1, 2)
+        velocities = np.asarray(pedestrian_relative_velocities, dtype=np.float64).reshape(-1, 2)
+        labels = self._labels(arena_people_data, positions, velocities)
+        return nearest_group(positions, velocities, labels, np.asarray(robot_twist, dtype=np.float64), self.max_range)
+
+
+class CrowdGroupClusterGenerator(CrowdGroupGenerator):
+    """Nearest pedestrian group from proximity clusters: pedestrians closer than `distance` with velocities within `velocity_tolerance`."""
+
+    def __init__(self, name: str, distance: float = 1.5, velocity_tolerance: float = 0.5, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.distance = distance
+        self.velocity_tolerance = velocity_tolerance
+
+    def _labels(
+        self, arena_people_data: arena_people_msgs.Pedestrians, positions: np.ndarray, velocities: np.ndarray
+    ) -> np.ndarray:
+        return proximity_clusters(positions, velocities, self.distance, self.velocity_tolerance)

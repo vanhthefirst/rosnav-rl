@@ -46,7 +46,7 @@ observations/
 │   ├── static.py            # Static utility functions
 │   ├── types.py             # NumPy type aliases (Pose2D, LidarRanges, …)
 │   ├── pose.py              # Pose conversion utilities
-│   └── semantic.py          # Relative-position / velocity helpers
+│   └── semantic.py          # Relative-position / velocity and pedestrian-group helpers
 └── observations.yaml        # Default pipeline configuration
 ```
 
@@ -103,6 +103,8 @@ DataSource (ABC)
     ├── PedestrianDistanceGenerator             → PedestrianTypeMinDistances
     ├── PedestrianTypeGenerator                 → PedestrianTypeArray
     ├── PedestrianSocialStateGenerator          → PedestrianSocialStates
+    ├── CrowdGroupGenerator                     nearest labelled group → CrowdGroup
+    ├── CrowdGroupClusterGenerator              nearest proximity cluster → CrowdGroup
     └── Arena* variants (ArenaPedestrian…)
 ```
 

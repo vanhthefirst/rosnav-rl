@@ -10,6 +10,7 @@ from rosnav_rl.utils.type_aliases import ObservationDict
 
 from ..observation_space.spaces.dynamics import LastActionSpace
 from ..observation_space.spaces.environment import (
+    CrowdGroupSpace,
     CrowdTimeToContactSpace,
     LaserCartesianMapSpace,
     PedestrianLocationSpace,
@@ -122,6 +123,8 @@ class MirrorSpaceManager(BaseSpaceManager):
             return self._checked_negate(name, space, tuple(range(1, space.shape[-1])))
         if name == CrowdTimeToContactSpace.name:
             return _identity
+        if name == CrowdGroupSpace.name:
+            return self._checked_negate(name, space, (2, 4))
         raise ValueError(f"no reflection rule for observation space '{name}'")
 
     @staticmethod
