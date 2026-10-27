@@ -316,6 +316,18 @@ CrowdTimeToContact = Annotated[
     ),
 ]
 
+CrowdGroup = Annotated[
+    np.ndarray,
+    DataSpec(
+        description="Nearest pedestrian group around the robot, by centroid distance",
+        shape="(6,)",
+        units="count, m, m, m/s, m/s, m",
+        source="pedestrian relative states, group labels or proximity clusters, and the measured robot velocity",
+        constraints="[member count, centroid x, centroid y, centroid vx, centroid vy relative to the robot, lateral spread of the members], robot frame, all zero without a group of two or more",
+        example="[3.0, 4.2, -0.6, -1.1, 0.1, 1.5]",
+    ),
+]
+
 # Additional encoded output types for observation spaces
 MotionStateVector = Annotated[
     np.ndarray,
@@ -605,6 +617,7 @@ __all__ = [
     "PedestrianTypeArray",
     "PedestrianSocialStates",
     "CrowdTimeToContact",
+    "CrowdGroup",
     "MotionStateVector",
     "KinematicStateVector",
     "TrajectoryStateVector",

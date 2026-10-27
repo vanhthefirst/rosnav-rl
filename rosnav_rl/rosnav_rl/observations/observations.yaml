@@ -38,6 +38,7 @@ aliases:
   pedestrian_relative_locations: arena_pedestrian_relative_locations
   pedestrian_relative_velocities: arena_pedestrian_relative_velocities
   pedestrian_social_states: arena_pedestrian_states
+  crowd_group: crowd_group_labels     # group input from simulator labels, crowd_group_clusters for the clustering fallback
 
 datasources:
   # ---------------------------------------------------------------------------
@@ -249,6 +250,15 @@ datasources:
 
   crowd_ttc:
     type: CrowdTimeToContactGenerator      # Time to contact against the measured robot velocity
+
+  crowd_group_labels:
+    type: CrowdGroupGenerator              # Nearest pedestrian group from Pedestrian.group_id
+
+  crowd_group_clusters:
+    type: CrowdGroupClusterGenerator       # Nearest pedestrian group from proximity clusters (< 1.5 m, velocities within 0.5 m/s)
+    params:
+      distance: 1.5
+      velocity_tolerance: 0.5
 
 # =============================================================================
 # CONFIGURATION EXAMPLES & USAGE PATTERNS
